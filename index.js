@@ -26,12 +26,24 @@ async function connectDB() {
         await client.connect();
         console.log("✅ MongoDB connected successfully!");
 
-        // Optional: ping to confirm connection
+        // Ping to confirm connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment successfully!");
 
-        // You can directly use client.db("YourDB") later in APIs
-        // Example: client.db("BillWise").collection("users").insertOne({ ... });
+        
+        // public bills api
+        app.get("/public-bills", async (req, res) => {
+            try {
+                const billsCollection = client.db("BillWise").collection("publicBills");
+                const bills = await billsCollection.find({}).toArray();
+                res.status(200).json(bills);
+            }
+            catch(err) {
+                console.error("Error fetching public bills:", err);
+                res.status(500).json({ error: "Internal Server Error" });
+            }
+
+        })
 
     } catch (err) {
         console.error("❌ MongoDB connection error:", err);
@@ -50,4 +62,3 @@ app.get("/", (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
 });
- 

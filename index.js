@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -30,16 +30,14 @@ async function connectDB() {
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment successfully!");
 
-
-        // public bills api - latest 6 bills
+        // public bills API - latest 6 bills
         app.get("/public-bills", async (req, res) => {
             try {
                 const billsCollection = client.db("BillWise").collection("publicBills");
 
-                // Fetch latest 6 bills sorted by date descending
                 const bills = await billsCollection
                     .find({})
-                    .sort({ date: -1 }) // -1 for descending
+                    .sort({ date: -1 })
                     .limit(6)
                     .toArray();
 
@@ -51,14 +49,14 @@ async function connectDB() {
             }
         });
 
-        // all ppublic bills api - all public bills
+        // all public bills API - all public bills
         app.get("/all-public-bills", async (req, res) => {
             try {
                 const billsCollection = client.db("BillWise").collection("publicBills");
 
                 const bills = await billsCollection
                     .find({})
-                    .sort({ date: -1 })   
+                    .sort({ date: -1 })
                     .toArray();
 
                 res.status(200).json(bills);
@@ -69,6 +67,24 @@ async function connectDB() {
             }
         });
 
+        // Get single bill by ID API
+        app.get("/public-bill/:id", async (req, res) => {
+            try {
+                const { id } = req.params;
+                const billsCollection = client.db("BillWise").collection("publicBills");
+
+                const bill = await billsCollection.findOne({ _id: new ObjectId(id) });
+
+                if (!bill) {
+                    return res.status(404).json({ error: "Bill not found" });
+                }
+
+                res.status(200).json(bill);
+            } catch (err) {
+                console.error("Error fetching bill by ID:", err);
+                res.status(500).json({ error: "Internal Server Error" });
+            }
+        });
 
     } catch (err) {
         console.error("❌ MongoDB connection error:", err);
@@ -82,7 +98,6 @@ connectDB();
 app.get("/", (req, res) => {
     res.send("Bill Wise server is running...");
 });
-
 
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);

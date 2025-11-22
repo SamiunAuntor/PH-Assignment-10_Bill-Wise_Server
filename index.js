@@ -30,20 +30,45 @@ async function connectDB() {
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment successfully!");
 
-        
-        // public bills api
+
+        // public bills api - latest 6 bills
         app.get("/public-bills", async (req, res) => {
             try {
                 const billsCollection = client.db("BillWise").collection("publicBills");
-                const bills = await billsCollection.find({}).toArray();
+
+                // Fetch latest 6 bills sorted by date descending
+                const bills = await billsCollection
+                    .find({})
+                    .sort({ date: -1 }) // -1 for descending
+                    .limit(6)
+                    .toArray();
+
                 res.status(200).json(bills);
             }
-            catch(err) {
+            catch (err) {
                 console.error("Error fetching public bills:", err);
                 res.status(500).json({ error: "Internal Server Error" });
             }
+        });
 
-        })
+        // all ppublic bills api - all public bills
+        app.get("/all-public-bills", async (req, res) => {
+            try {
+                const billsCollection = client.db("BillWise").collection("publicBills");
+
+                const bills = await billsCollection
+                    .find({})
+                    .sort({ date: -1 })   
+                    .toArray();
+
+                res.status(200).json(bills);
+            }
+            catch (err) {
+                console.error("Error fetching all public bills:", err);
+                res.status(500).json({ error: "Internal Server Error" });
+            }
+        });
+
 
     } catch (err) {
         console.error("❌ MongoDB connection error:", err);

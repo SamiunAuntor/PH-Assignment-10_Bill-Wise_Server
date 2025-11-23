@@ -3,6 +3,13 @@ const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
+// Firebase Admin SDK
+const admin = require("firebase-admin");
+const serviceAccount = require("./billwise-server-firebase-adminsdk.json");
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+});
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -19,6 +26,25 @@ const client = new MongoClient(uri, {
         deprecationErrors: true,
     }
 });
+
+// Middleware to verify Firebase token
+const verifyFirebaseToken = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const idToken = authHeader.split(" ")[1];
+
+    try {
+        const decodedToken = await admin.auth().verifyIdToken(idToken);
+        req.user = decodedToken;
+        next();
+    } catch (err) {
+        console.error("Firebase token verification error:", err);
+        return res.status(401).json({ error: "Invalid or expired token" });
+    }
+};
 
 async function connectDB() {
     try {
@@ -59,7 +85,7 @@ async function connectDB() {
             }
         });
 
-        // get single bill by ID
+        // get single public bill by ID
         app.get("/public-bill/:id", async (req, res) => {
             try {
                 const { id } = req.params;
@@ -76,10 +102,10 @@ async function connectDB() {
             }
         });
 
-        // get all bills paid by user
-        app.get("/my-bills", async (req, res) => {
+        // get all bills paid by user - secured with Firebase token
+        app.get("/my-bills", verifyFirebaseToken, async (req, res) => {
             try {
-                const email = req.query.email;
+                const email = req.user.email;
                 if (!email) return res.status(400).json([]);
                 const bills = await myBillsCollection.find({ email }).toArray();
                 res.status(200).json(bills);

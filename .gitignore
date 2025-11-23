@@ -1,2 +1,3 @@
 .env
 billwise-server-firebase-adminsdk.json
+node_modules

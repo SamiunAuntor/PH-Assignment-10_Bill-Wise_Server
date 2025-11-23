@@ -145,8 +145,79 @@ async function connectDB() {
             }
         });
 
+        // update my bill
+        app.put("/update-my-bill/:id", verifyFirebaseToken, async (req, res) => {
+            try {
+                const { id } = req.params;
+                const email = req.user.email;
+                const { amount, address, phone, createdAt } = req.body;
+
+                const bill = await myBillsCollection.findOne({
+                    _id: new ObjectId(id),
+                    email,
+                });
+
+                if (!bill) {
+                    return res.status(404).json({ error: "Bill not found or unauthorized" });
+                }
+
+                const updateDoc = {
+                    $set: {
+                        amount,
+                        address,
+                        phone,
+                        createdAt: createdAt ? new Date(createdAt) : bill.createdAt
+                    }
+                };
+
+                await myBillsCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    updateDoc
+                );
+
+                res.json({ message: "Bill updated successfully" });
+
+            } catch (err) {
+                console.error("Error updating bill:", err);
+                res.status(500).json({ error: "Internal Server Error" });
+            }
+        });
+
+
+
+        // delete my bill
+        app.delete("/delete-my-bill/:id", verifyFirebaseToken, async (req, res) => {
+            try {
+                const { id } = req.params;
+                const email = req.user.email;
+
+                const bill = await myBillsCollection.findOne({
+                    _id: new ObjectId(id),
+                    email
+                });
+
+                if (!bill) {
+                    return res.status(404).json({ error: "Bill not found or unauthorized" });
+                }
+
+                await myBillsCollection.deleteOne({ _id: new ObjectId(id) });
+
+                res.json({ message: "Bill deleted successfully" });
+
+            } catch (err) {
+                console.error("Error deleting bill:", err);
+                res.status(500).json({ error: "Internal Server Error" });
+            }
+        });
+
+
         return;
-    } catch (err) {
+    }
+
+
+
+    // db connection error
+    catch (err) {
         console.error("❌ MongoDB connection error:", err);
     }
 }

@@ -1,110 +1,104 @@
 
-# Bill Wise - Server
+# Bill Wise — Server API
 
-Client (frontend) repository: https://github.com/SamiunAuntor/PH-Assignment-10_Bill-Wise_Client
+Production-ready Node.js + Express API for the Utility Bill Management System. Secured with Firebase and backed by MongoDB. Designed for serverless deployment on Vercel.
 
-A clean, secure Node.js + Express REST API for the Utility Bill Management System (server-side of the Bill Wise project).
+Client (frontend): https://github.com/SamiunAuntor/PH-Assignment-10_Bill-Wise_Client
 
-**Project**: Utility Bill Management System
+**Overview**
+- Manages public utility bills and user-specific bills.
+- Protects user data with Firebase ID token verification.
+- Uses MongoDB (`BillWise` database) with `publicBills` and `myBills` collections.
+- Optimized for Vercel serverless functions via `vercel.json` routing.
 
-**Purpose**: This repository implements the server APIs for managing public bills and user-paid bills (CRUD + authentication via Firebase). It stores data in MongoDB and uses Firebase Admin SDK for token validation.
+**Live URLs**
+- API base URL: Provide your deployed Vercel URL (e.g., `https://<your-project>.vercel.app`).
+- Health check: `GET /` returns `"Bill Wise server is running..."`.
 
-**Features**
-- **REST API**: Endpoints for public bills, bill details, and user-specific paid bills.
-- **Authentication**: Firebase token verification middleware for protected routes (`/my-bills`, update/delete endpoints).
-- **MongoDB storage**: Uses a `bills` (publicBills) and `myBills` collections in the `BillWise` database.
-- **Input validation**: Basic server-side validation for required fields and phone format.
-- **CORS + JSON body parsing**: Ready for single-page frontends.
+**Tech Stack**
+- Node.js, Express, MongoDB (official driver), Firebase Admin SDK
 
-**Tech stack**
-- Node.js
-- Express
-- MongoDB (official driver)
-- Firebase Admin SDK
+**Project Structure**
+- `index.js` — Express app and route definitions (exported for serverless runtime)
+- `vercel.json` — Vercel build and routing config
+- `encode.js` — helper to encode Firebase service account JSON to base64
+- `Assets/` — static images used by the project
+- `.gitignore` — excludes secrets and build artifacts
 
-**Repository structure (important files)**
-- `index.js` - main server entry and API route definitions
-- `package.json` - Node dependencies and scripts
-- `billwise-server-firebase-adminsdk.json` - Firebase service account (sensitive, do not commit to public repos)
+**Environment & Secrets**
+Create `.env` in the project root with:
+- `MONGO_URI` (required) — MongoDB connection string
+- `FIREBASE_KEY` (required) — base64-encoded Firebase service account JSON
 
-**Quick start (local)**
-1. Clone the repository and change into the folder:
-   `cd Bill-Wise-Server`
-2. Install dependencies:
-   `npm install`
-3. Create a `.env` file in the project root with the following variables:
-   - `MONGO_URI` — your MongoDB connection string (Atlas or local)
-   - `PORT` — optional, defaults to `5000`
-4. Add the Firebase service account JSON file as `billwise-server-firebase-adminsdk.json` in the project root. (This file is required for token verification.)
-5. Run the server:
-   `node index.js`
+How to set `FIREBASE_KEY`:
+1. Save your Firebase service account file as `billwise-server-firebase-adminsdk.json` in the project root.
+2. Run `node encode.js` — copy the printed base64 string.
+3. Put that string in `.env` as `FIREBASE_KEY=<printed-base64>`.
 
-The server will print:
-`✅ MongoDB connected successfully!`
-`Pinged your deployment successfully!`
-`Server running at http://localhost:5000` (if using default port)
+Note: `PORT` is not used because the app is exported for serverless. Use Vercel CLI for local development.
 
-**Environment variables**
-- `MONGO_URI` (required) — MongoDB connection string.
-- `PORT` (optional) — server port.
+**Local Development**
+- Install dependencies: `npm install`
+- Install Vercel CLI: `npm i -g vercel`
+- Run locally with serverless runtime: `vercel dev`
+  - Ensures environment variables are loaded from `.env` and routes match production.
 
-**Firebase setup notes**
-- Create a Firebase project and service account, download the JSON credential file and save it as `billwise-server-firebase-adminsdk.json` in the project root.
-- Ensure that the client app's domain is added to Firebase Auth authorized domains when deploying to Netlify/Surge.
-- The server expects clients to send Firebase ID tokens in the `Authorization` header as `Bearer <idToken>` for protected routes.
+**API Reference**
+All endpoints return JSON. Replace `:id` with a MongoDB `_id` string.
 
-**API Endpoints**
-All endpoints return JSON. Replace `:id` placeholders with MongoDB `_id` strings.
+- `GET /public-bills`
+  - Returns latest 6 public bills (sorted by `date` desc).
 
-- `GET /public-bills` — latest 6 public bills (sorted by date desc)
-- `GET /all-public-bills` — all public bills
-- `GET /public-bill/:id` — public bill details by ID
-- `GET /my-bills` — protected: returns paid bills for the authenticated user's email. Requires `Authorization: Bearer <idToken>` header.
-- `POST /add-my-bill` — insert a paid bill record (public route in this server). Body JSON example:
-  ```json
-  {
-    "billId": "abc123",
-    "username": "Jane Doe",
-    "email": "jane@example.com",
-    "amount": 360,
-    "address": "Dhaka",
-    "phone": "017XXXXXXXX",
-    "date": "2025-11-24"
-  }
-  ```
+- `GET /all-public-bills`
+  - Returns all public bills (sorted by `date` desc).
 
-  Server accepts `billId` or `billsId` (mapped internally). Returns `201` with `insertedId` on success.
+- `GET /public-bill/:id`
+  - Returns a single public bill by `_id`.
 
-- `PUT /update-my-bill/:id` — protected: update a paid bill (amount, address, phone, date). Requires `Authorization` header.
-- `DELETE /delete-my-bill/:id` — protected: delete a paid bill. Requires `Authorization` header.
+- `GET /my-bills` — Auth required
+  - Header: `Authorization: Bearer <Firebase ID token>`
+  - Returns bills for the authenticated user's `email`.
 
-**Sample curl requests**
-- Add a bill (public route):
-  `curl -X POST http://localhost:5000/add-my-bill -H "Content-Type: application/json" -d "{\"billId\":\"abc123\",\"username\":\"Alice\",\"email\":\"alice@example.com\",\"amount\":100}"`
+- `POST /add-my-bill` — Public
+  - Body fields (required): `billId`, `username`, `email`, `amount`
+  - Optional: `address`, `phone` (11 digits), `createdAt` (server sets current date if absent)
+  - Response: `201 { message, insertedId }`
 
-- Get user bills (protected):
-  `curl -H "Authorization: Bearer <idToken>" http://localhost:5000/my-bills`
+- `PUT /update-my-bill/:id` — Auth required
+  - Header: `Authorization: Bearer <Firebase ID token>`
+  - Body: any of `amount`, `address`, `phone`, `createdAt` (date string)
+  - Only updates documents that match the authenticated user's `email`.
 
-**Common troubleshooting**
-- MongoDB connection errors: confirm `MONGO_URI` value, network access (Atlas IP whitelist), and that the URI includes credentials if required.
-- Firebase token verification failures: ensure client sends a valid Firebase ID token in the `Authorization` header. Check `billwise-server-firebase-adminsdk.json` credentials.
-- Routes 404: the server registers routes after a successful MongoDB connect. Wait for the `MongoDB connected` logs before testing routes.
+- `DELETE /delete-my-bill/:id` — Auth required
+  - Header: `Authorization: Bearer <Firebase ID token>`
+  - Deletes only if the bill belongs to the authenticated user.
 
-**Security notes**
-- Do not commit `billwise-server-firebase-adminsdk.json` or other secret files to public repositories. Use environment or secret managers in production.
-- If deploying, configure environment variables securely in your host (Vercel, Heroku, etc.).
+**Sample Requests**
+- Add a bill:
+  `curl -X POST https://<your-api>/add-my-bill -H "Content-Type: application/json" -d "{\"billId\":\"abc123\",\"username\":\"Alice\",\"email\":\"alice@example.com\",\"amount\":100}"`
 
-**Deployment**
-- Recommended hosting for server APIs: Vercel (Serverless Functions) or Heroku. Add `MONGO_URI` and Firebase credentials (or use a secure secret) in the host's settings.
+- Get my bills (requires Firebase token):
+  `curl -H "Authorization: Bearer <idToken>" https://<your-api>/my-bills`
 
-**Contributing & Commits**
-- Follow conventional commits for clear history. Keep server-side commit messages focused and descriptive.
+**Deployment (Vercel)**
+- `vercel.json` config routes all methods to `index.js` using `@vercel/node`.
+- Set `MONGO_URI` and `FIREBASE_KEY` in Vercel Project Settings → Environment Variables.
+- Use `vercel` to deploy and `vercel env pull` to sync envs locally if needed.
+
+**Troubleshooting**
+- MongoDB not ready: API returns `503 { error: "Database not ready" }` until the driver connects.
+- Auth failures: ensure the client sends a valid Firebase ID token in `Authorization: Bearer <idToken>` and `FIREBASE_KEY` is correctly set.
+- Phone validation: must be exactly 11 digits when provided.
+
+**Security Notes**
+- Do not commit service account files. `.gitignore` already excludes `billwise-server-firebase-adminsdk.json`.
+- Use environment variables or secret managers in production.
 
 **License**
 - MIT
 
-**Author**
-- Add your name, email and repository links here.
+**Maintainers**
+- Add your name and contact information here.
 
 ---
-Update this README with the live server URL and any production deployment details once available.
+Update the "Live URLs" section after deployment.

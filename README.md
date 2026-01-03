@@ -13,7 +13,7 @@ Production-ready Node.js + Express API for the **Bill Wise** Utility Management 
 - **Serverless**: Optimized for Vercel via `vercel.json` routing.
 
 ## Live URLs
-- **API Base URL**: `https://bill-wise-server-beta.vercel.app` (Replace with your actual deployed URL)
+- **API Base URL**: `https://bill-wise-server.vercel.app`
 - **Health Check**: `GET /` returns `"Bill Wise server is running..."`.
 
 ## Tech Stack

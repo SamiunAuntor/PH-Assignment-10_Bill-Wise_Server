@@ -468,8 +468,3 @@ app.post("/admin/add-public-bill", verifyAdmin, async (req, res) => {
 module.exports = app;
 
 
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-    console.log(`🚀 Bill Wise server running at http://localhost:${PORT}`);
-});

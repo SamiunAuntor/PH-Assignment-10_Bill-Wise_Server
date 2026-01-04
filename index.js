@@ -294,6 +294,37 @@ app.get("/admin/stats", verifyAdmin, async (req, res) => {
     }
 });
 
+// Public Stats for Homepage (No verifyAdmin needed)
+app.get("/public-stats", async (req, res) => {
+    try {
+        const totalUsers = await usersCollection.countDocuments({});
+        const activeUsers = await usersCollection.countDocuments({ status: "active" });
+        const totalBills = await myBillsCollection.countDocuments({});
+
+        // Using aggregation to calculate sum efficiently
+        const amountData = await myBillsCollection.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: "$amount" }
+                }
+            }
+        ]).toArray();
+
+        const totalAmount = amountData.length > 0 ? amountData[0].total : 0;
+
+        res.status(200).json({
+            totalUsers,
+            activeUsers,
+            totalBills,
+            totalAmount
+        });
+    } catch (err) {
+        console.error("Public stats error:", err);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
 // Admin Recent Bills (Last 5)
 app.get("/admin/recent-bills", verifyAdmin, async (req, res) => {
     try {
